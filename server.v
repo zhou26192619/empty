@@ -3,6 +3,7 @@ module main
 import vweb
 import sqlite
 import json
+import strings
 
 const (
 	port = 8082
@@ -35,12 +36,14 @@ pub fn (app mut App) init() {
 			}
 			println(columns)
 			db.exec('DROP TABLE IF EXISTS $table.name')
-			mut sql:='CREATE TABLE IF NOT EXISTS $table.name (' 
+			mut sql := strings.Builder{}
+			sql.write('CREATE TABLE IF NOT EXISTS $table.name (') 
 			for col in columns {
-				sql += '$col.name $col.mold,'
+				sql.write('$col.name $col.mold,')
 			}
-			sql += ')'
-			_, sqlcode := db.exec(sql)
+			sql.go_back(1)
+			sql.write(')')
+			_, sqlcode := db.exec(sql.str())
 			println('create $sqlcode')
 	}
 }
