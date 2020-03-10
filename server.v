@@ -1,9 +1,8 @@
 module main
 
 import vweb
-
-import net.http
 import sqlite
+import json
 
 const (
 	port = 8082
@@ -21,11 +20,29 @@ fn main() {
 }
 
 pub fn (app mut App) init() {
-	db := sqlite.connect('file:test:')
-	users, mut code := db.exec('select * from user')
-	println('user = $users , code = $code')
-
-	// app.vweb.handle_static('.')
+	db := sqlite.connect('test.db')
+	rows, code := db.exec('select * from custom')
+	for index,row in rows {
+		table:= Table{
+			name :row.vals[0],
+			detail :row.vals[1],
+			version :row.vals[2].int()
+		}
+			println(table)
+			columns:=json.decode([]Column,table.detail)or{
+				println('table struct wrong')
+				return
+			}
+			println(columns)
+			db.exec('DROP TABLE IF EXISTS $table.name')
+			mut sql:='CREATE TABLE IF NOT EXISTS $table.name (' 
+			for col in columns {
+				sql += '$col.name $col.mold,'
+			}
+			sql += ')'
+			_, sqlcode := db.exec(sql)
+			println('create $sqlcode')
+	}
 }
 
 pub fn (app mut App) json_endpoint() {
@@ -37,14 +54,34 @@ pub fn (app mut App) index() {
 	app.vweb.text('ssss')
 }
 
-pub fn (app mut App) reset() {
-}
-
 pub fn (app mut App) text() {
 	app.vweb.text('Hello world')
+}
+
+pub fn (app mut App) reset() {
+
 }
 
 pub fn (app mut App) cookie() {
 	app.vweb.set_cookie('cookie', 'test')
 	app.vweb.text('Headers: $app.vweb.headers')
+}
+
+struct Table{
+	name string
+	detail string
+	version int
+}
+
+pub fn (this Table)str() string{
+	return '{name:$this.name,detail:$this.detail,version:$this.version}'
+}
+
+struct Column{
+	name string
+	mold string
+}
+
+pub fn (this Column)str() string{
+	return '{name:$this.name,mold:$this.mold}'
 }
