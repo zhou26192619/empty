@@ -51,6 +51,7 @@ pub fn (app mut App) index() {
 	}
 	app.vweb.text('ssss')
 }
+
 fn insert_custom_table(table TableOop) {
 	db := sqlite.connect('test.db')
 	detail:=json.encode(table.detail)
@@ -85,9 +86,22 @@ pub fn (app mut App) tables() {
 	}
 	app.vweb.json(json.encode(tables))
 }
+
+pub fn (app mut App) table_info() {
+	app.vweb.add_header('Access-Control-Allow-Origin' , '*')
+	table_name := app.vweb.form['table']
+	db := sqlite.connect('test.db')
+	rows, _ := db.exec('select * from $table_name')
+	println(rows)
+	// mut infos:=[]map[string]string
+	// for row in rows {
+		
+	// }
+	app.vweb.json(json.encode(rows))
+}
+
 pub fn (app mut App) add_table() {
 	app.vweb.add_header('Access-Control-Allow-Origin' , '*')
-	println(app.vweb.form['data'])
 	table:=json.decode(TableOop,app.vweb.form['data']) or{
 		app.vweb.text('shibai')
 		return
@@ -95,6 +109,60 @@ pub fn (app mut App) add_table() {
 	insert_custom_table(table)
 	app.vweb.text('jieshu')
 }
+
+pub fn (app mut App) delete_table() {
+	app.vweb.add_header('Access-Control-Allow-Origin' , '*')
+	table:=app.vweb.form['table']
+	db := sqlite.connect('test.db')
+	db.exec('delete from custom where name="$table"')
+	db.exec('drop table $table;')
+	app.vweb.text('jieshu')
+}
+
+pub fn (app mut App) add_data() {
+	app.vweb.add_header('Access-Control-Allow-Origin' , '*')
+	table_name:=app.vweb.form['table']
+	mut data_str := app.vweb.form['data']
+	mut sqlstr:=strings.Builder{}
+	sqlstr.write('insert into $table_name (')
+	data_str = data_str.trim_left('{')
+	data_str = data_str.trim_right('}')
+	items := data_str.split(',')
+	for item in items{
+		info :=item.split(':')
+		key:=info[0]
+		sqlstr.write('$key,')
+	}
+	sqlstr.go_back(1)
+	sqlstr.write(') values (')
+	for item in items{
+		info :=item.split(':')
+		key:=info[1]
+		sqlstr.write('$key,')
+	}
+	sqlstr.go_back(1)
+	sqlstr.write(');')
+	println(sqlstr.str())
+	db := sqlite.connect('test.db')
+	db.exec(sqlstr.str())
+
+	app.vweb.text('jieshu')
+}
+
+// fn endcode_map<T>(s string) ?map[string]T{
+// 	mut t:=map[string]T{}
+// 	mut res:=s
+// 	res=res.trim_left('{')
+// 	res=res.trim_right('}')
+// 	items := res.split(',')
+// 	for item in items{
+// 	   info :=	item.replace('"','').split(':')
+// 	   t[info[0]] = info[1]
+// 	}
+// 	println(t)
+// 	return t
+// }
+
 pub fn (app mut App) reset() {
 
 }
@@ -119,7 +187,9 @@ struct TableOop{
 	detail []Column
 	version int
 }
-
+pub fn (this TableOop)str() string{
+	return '{name:$this.name,detail:$this.detail,version:$this.version}'
+}
 struct Column{
 	name string
 	mold string
