@@ -208,8 +208,9 @@ pub fn (app mut App) add_data() {
 
 pub fn (app mut App) delete_data() {
 	app.vweb.add_header('Access-Control-Allow-Origin' , '*')
-	data_str:=app.vweb.req.data
-	println(data_str)
+	mut data_str:=app.vweb.req.data
+	data_str = data_str.trim_left('{')
+	data_str = data_str.trim_right('}')
 	mut table:=''
 	mut id:=''
 	ss:=data_str.split(',')
@@ -223,7 +224,7 @@ pub fn (app mut App) delete_data() {
 		}
 	}
 	db := sqlite.connect('test.db')
-	_,code:=db.exec('delete from "$table" where id=$id')
-	println('delete from "$table" where id=$id == $code')
+	_,code:=db.exec('delete from $table where id=$id')
+	println('delete from $table where id=$id == $code')
 	app.vweb.text('jieshu')
 }

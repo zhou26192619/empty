@@ -1,3 +1,5 @@
+module main
+
 import os
 import net
 import net.http
