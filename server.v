@@ -10,18 +10,6 @@ const (
 	BASE_TABLE = 'custom'
 )
 
-pub struct App {
-pub mut:
-	vweb vweb.Context // TODO embed
-	cnt int
-}
-pub fn (app mut App) reset() {
-
-}
-pub fn (app mut App) init() {
-
-}
-
 struct NetResult<T>{
 	mut:
 		code int
@@ -58,6 +46,18 @@ struct Data{
 	id string
 	table string
 	data map[string]string
+}
+
+pub struct App {
+pub mut:
+	vweb vweb.Context // TODO embed
+	cnt int
+}
+pub fn (app mut App) reset() {
+
+}
+pub fn (app mut App) init() {
+
 }
 
 fn main() {
