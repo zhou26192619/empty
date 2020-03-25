@@ -16,15 +16,46 @@ fn main() {
 	parse(str)
 }
 
+enum TokenType {
+	null number str  begin_object end_object begin_array end_array boolean colon comma docment
+} 
+
+struct Token{
+	token_type TokenType
+	value string
+}
+
 fn parse(str string) {
 	new_str:= str.trim_space()
-	mut result:=[]string
+	mut result:=[]Token
 	for i:=0; i<new_str.len;i++ {
 		s:=new_str[i].str().trim_space()
 		if s=='"' {
 			temp:= new_str.substr(i+1,new_str.index_after('"',i+1))
 			i += temp.len+1
-			result << temp
+			tt:= TokenType{
+				token_type:TokenType.str,
+				value:temp
+			}
+			result << tt
+		}
+		else if s in '{' {
+			result << TokenType{
+				token_type:TokenType.begin_object,
+				value:s
+			}
+		}
+		else if s in '}' {
+			result << TokenType{
+				token_type:TokenType.end_object,
+				value:s
+			}
+		}
+		else if s in '[' {
+			result << TokenType{
+				token_type:TokenType.begin_array,
+				value:s
+			}
 		}
 		else if s in ['{','}','[',']',',',':'] {
 			result << s
