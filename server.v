@@ -50,13 +50,14 @@ struct Column{
 	mold string
 	mode string
 	parent string
+	show bool
 	mut :
 		sql_name string [ignore]
 }
 struct Data{
 	id string
 	table string
-	data string
+	data map[string]string
 }
 
 fn main() {
@@ -158,18 +159,54 @@ pub fn (app mut App) list_data() {
 	db := sqlite.connect('test.db')
 	rows, code := db.exec('select * from "$table_name"')
 	println('select * from "$table_name" == $code')
+
+	// table_struct,_:=db.exec("select * from $BASE_TABLE  where sql_name=='$table_name'")
+ 	// detail:=table_struct[0].vals[3]
+	// cols:=json.decode([]Column,detail)or{
+	// 	return
+	// }
+	
 	app.vweb.json(json.encode(rows))
+}
+
+pub fn (app mut App) list_child_data() {
+	app.vweb.add_header('Access-Control-Allow-Origin' , '*')
+	table_name := app.vweb.req.data
+	db := sqlite.connect('test.db')
+	rows, code := db.exec('select * from "$table_name"')
+	println('select * from "$table_name" == $code')
+
+	table_struct,_:=db.exec("select * from $BASE_TABLE  where sql_name=='$table_name'")
+ 	detail:=table_struct[0].vals[3]
+	cols:=json.decode([]Column,detail)or{
+		return
+	}
+	mut builder:=strings.Builder{}
+	if rows.len>0{
+		for j,row in rows {
+			builder.write(row.vals[0]+',')
+			for i,col in cols {
+				if col.show  {
+					builder.write(row.vals[i+1]+',')
+				}
+			}
+			builder.go_back(1)
+			builder.write(';')
+		}
+		builder.go_back(1)
+	}
+	println(builder.str())
+	app.vweb.json(builder.str())
 }
 
 pub fn (app mut App) add_data() {
 	app.vweb.add_header('Access-Control-Allow-Origin' , '*')
 	mut data_str := app.vweb.req.data
-	println(data_str)
 	// data:=json.decode(Data,data_str) or{
 	// 	app.vweb.text('shibai')
 	// 	return
 	// }
-	// println(json.encode(data))
+	// println('encode == '+json.encode(data))
 	start :=data_str.index('"table":"') or {
 		return
 	}
@@ -181,22 +218,23 @@ pub fn (app mut App) add_data() {
 		return
 	}
 	data_str=data_str.substr(data_start+7,data_str.len-1)
+	println(data_str)
 	mut sqlstr:=strings.Builder{}
 	sqlstr.write('insert into "$table_name" (')
 	data_str = data_str.trim_left('{')
-	data_str = data_str.trim_right('}')
-	items := data_str.split(',')
+	data_str = data_str.all_before_last('}')
+	items := data_str.split('","')
 	for item in items{
-		info :=item.split(':')
+		info :=item.replace('"','').split(':')
 		key:=info[0]
-		sqlstr.write('$key,')
+		sqlstr.write('"$key",')
 	}
 	sqlstr.go_back(1)
 	sqlstr.write(') values (')
 	for item in items{
-		info :=item.split(':')
+		info :=item.replace('"','').split(':')
 		key:=info[1]
-		sqlstr.write('$key,')
+		sqlstr.write('"$key",')
 	}
 	sqlstr.go_back(1)
 	sqlstr.write(');')
@@ -210,7 +248,7 @@ pub fn (app mut App) delete_data() {
 	app.vweb.add_header('Access-Control-Allow-Origin' , '*')
 	mut data_str:=app.vweb.req.data
 	data_str = data_str.trim_left('{')
-	data_str = data_str.trim_right('}')
+	data_str = data_str.all_before_last('}')
 	mut table:=''
 	mut id:=''
 	ss:=data_str.split(',')
