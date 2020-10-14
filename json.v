@@ -1,8 +1,5 @@
 module main
 
-__global token_index int
-__global tokens []Token
-
 enum TokenType {
 	null//null
 	number//-,0-9
@@ -31,13 +28,14 @@ fn main() {
 		],
 		"sd":"s21"
 	}'
-
-	parse(str)
+	println('$str')
+	tokens :=parse(str)
+	parse_json(tokens)
 }
 
-fn parse(str string) {
+fn parse(str string) []Token{
 	new_str:= str.trim_space()
-	tokens = []
+	mut tokens := []Token{}
 	for i:=0; i<new_str.len;i++ {
 		s:=new_str[i].str().trim_space()
 		if s=='"' {
@@ -108,7 +106,7 @@ fn parse(str string) {
 		else if s in ['-','0','1','2','3','4','5','6','7','8','9'] {
 			mut j:=i+1
 			for ;; j++ {
-				if ! new_str[j].str() in ['0','1','2','3','4','5','6','7','8','9','.']{
+				if !(new_str[j].str() in ['0','1','2','3','4','5','6','7','8','9','.']) {
 					break
 				}
 			}
@@ -119,10 +117,13 @@ fn parse(str string) {
 			i=j-1
 		}
 		else {
-
 		}
 	}
-	parse_json()
+	for token in tokens {
+		println('tokens.value == ' +token.value)	
+	}
+	println('tokens.len $tokens.len')
+	return tokens
 }
 
 fn parse_constont_value(start int ,target string, sourse string) string {
@@ -142,129 +143,108 @@ fn check_expect_token(token Token,expect []TokenType) bool{
 	return false
 }
 
-__global result voidptr 
-
-fn parse_json() {
-	token_index =0
-	println('tokens.len $tokens.len')
-	// temp := tokens[0]
-	// match temp.token_type {
-	// 	.begin_object {
-		re:=parse_json_object() 
-		// }
-		// .begin_array {
-		// 	parse_json_array()
-		// }
-		// else{
-		// 	panic('json format err')
-		// }
-	// }
+fn parse_json(tokens []Token) {
+	re,_:=parse_json_object(tokens,0) 
 }
 
 
-fn parse_json_object() ?map[string]voidptr {
-	mut obj:=map[string]voidptr
+fn parse_json_object(tokens []Token,index int) (map[string]voidptr,int) {
+	mut token_index:=index
+	mut obj:=map[string]voidptr{}
 	mut expect_tokens := [ TokenType.str , .end_object]
 	mut key:=''
 	for ; token_index < tokens.len;{
 		temp:= tokens[token_index]
-			println('for obj $token_index == $temp.value')
+		// println('for obj $token_index == $temp.value')
 		token_index++
-		// if check_expect_token(temp,expect_tokens) {
-			match temp.token_type {
-				.begin_object {
-					v:=parse_json_object() 
+		match temp.token_type {
+			.begin_object {
+				v,i:=parse_json_object(tokens,token_index) 
+				token_index=i
+				obj[key]=&v
+				expect_tokens=[.str,.end_object]
+			}
+			.end_object {
+				println('value = $obj')
+				return obj,token_index
+			}
+			.begin_array {
+				v,i:=parse_json_array(tokens,token_index)
+				token_index=i
+				obj[key]=&v
+			}
+			.str {
+				next:= tokens[token_index]
+				if next.token_type ==.colon{
+					key =temp.value
+					expect_tokens=[.colon]
+				}else{
+					v :=temp.value.clone()
 					obj[key]=&v
-					expect_tokens=[.str,.end_object]
-				}
-				.end_object {
-					println('end obj $token_index')
-					return obj
-				}
-				.begin_array {
-					v:=parse_json_array()
-					obj[key]=&v
-				}
-				.str {
-					next:= tokens[token_index]
-					if next.token_type ==.colon{
-						key =temp.value
-						expect_tokens=[.colon]
-					}else{
-						v :=temp.value.clone()
-						obj[key]=&v
-						expect_tokens=[.comma,.end_object]
-						println('value = $key : $v')
-					}
-				}
-				.number {
-						v :=temp.value.clone()
-						obj[key]=&v
-						expect_tokens=[.comma,.end_object]
-						println('value = $key : $v')
-				}
-				.boolean {
-						v :=temp.value.clone()
-						obj[key]=&v
-						expect_tokens=[.comma,.end_object]
-						println('value = $key : $v')
-				}
-				.colon {
-					expect_tokens=[ .str , .begin_object , .begin_array , .number , .null , .boolean ]
-				}
-				.comma {
-					expect_tokens=[ .str ]
-				}
-				else {
-
+					expect_tokens=[.comma,.end_object]
 				}
 			}
-		// }else{
-		// 	//error
-		// }
-		
+			.number {
+					v :=temp.value.clone()
+					obj[key]=&v
+					expect_tokens=[.comma,.end_object]
+			}
+			.boolean {
+					v :=temp.value.clone()
+					obj[key]=&v
+					expect_tokens=[.comma,.end_object]
+			}
+			.colon {
+				expect_tokens=[ .str , .begin_object , .begin_array , .number , .null , .boolean ]
+			}
+			.comma {
+				expect_tokens=[ .str ]
+			}
+			else {
+
+			}
+		}
 	}
-	return obj
+	return obj,token_index
 }
-fn parse_json_array() []voidptr{
-	mut obj:=[]voidptr
+fn parse_json_array(tokens []Token,index int) ([]voidptr, int){
+	mut token_index:=index
+	mut obj:=[]voidptr{}
 	mut expect_tokens := [ TokenType.str , .begin_array,.begin_object,.number,.boolean,.null]
 	for ; token_index < tokens.len;{
 		temp:= tokens[token_index]
-			println('for arr $token_index == $temp.value')
+			// println('for arr $token_index == $temp.value')
 		token_index++
-		// if check_expect_token(temp,expect_tokens) {
 			match temp.token_type {
 				.begin_object {
-					v:=parse_json_object() 
+					v,i:=parse_json_object(tokens,token_index) 
+					token_index=i
 					obj << &v
 					expect_tokens=[.str,.end_object]
 				}
 				.end_array{
-					println('end arr $token_index')
-					return obj
+					println('value = $obj')
+					return obj,token_index
 				}
 				.begin_array {
-					v:=parse_json_array()
+					v,i:=parse_json_array(tokens,token_index)
+					token_index=i
 					obj<< &v
 				}
 				.str {
 					v :=temp.value.clone()
 					obj << &v
 					expect_tokens=[.comma,.end_array]
-					println('value =  $v')
 				}
 				.number {
 					v :=temp.value.clone()
 					obj << &v
 					expect_tokens=[.comma,.end_array]
-					println('value =  $v')
 				}
 				.boolean {
 					v :=temp.value.clone()
 					obj << &v
 					expect_tokens=[.comma,.end_array]
-					println('value =  $v')
 				}
 				.comma {
 					expect_tokens=[ .str ]
@@ -273,10 +253,7 @@ fn parse_json_array() []voidptr{
 
 				}
 			}
-		// }else{
-		// 	//error
-		// }
 		
 	}
-	return obj
+	return obj,token_index
 }

@@ -10,7 +10,7 @@ const (
 	BASE_TABLE = 'custom'
 )
 
-struct NetResult<T>{
+struct NetResult<T> {
 	mut:
 		code int
 		msg string
